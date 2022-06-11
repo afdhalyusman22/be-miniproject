@@ -12,6 +12,11 @@ const router = express.Router();
 
 router.get('/', async (req, res) => {
     let audit_trail = await AuditTrail.findAll();
+    if(audit_trail.length === 0)
+        return res.status(404).send({
+            message: 'not found'
+        });
+
     audit_trail = audit_trail.map(item => {
         return item.dataValues;
     });
