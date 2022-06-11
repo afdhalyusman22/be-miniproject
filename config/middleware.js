@@ -1,16 +1,22 @@
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
+const AuditTrail = require('../models/AuditTrail');
+
 function authentication(req, res, next) {
   const authHeader = req.get('authorization');
   if (authHeader) {
     const token = authHeader.split(' ')[1];
     if (token) {
-      jwt.verify(token, process.env.TOKEN_SECRET, (error, user) => {
+      jwt.verify(token, process.env.TOKEN_SECRET, async (error, user) => {
         if (error) {
           console.log("Token expired");
         }
         req.user = user;
+        await AuditTrail.create({
+          username: req.user.username,
+          endpoint: `${req.method} ${req.originalUrl}`,
+        });
       });
     } else {
       next();

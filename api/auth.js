@@ -20,6 +20,7 @@ router.get('/ping', async (req, res) => {
         })
     }
 });
+
 router.post('/login', async (req, res) => {
     const password = req.body.password;
 
@@ -101,7 +102,7 @@ router.post('/register', async (req, res) => {
                 }
             }
         });
-        console.log(cekUser)
+        
         if (cekUser == null) {
             bcrypt.hash(pass, 10, async (err, hash) => {
                 const password = hash;
