@@ -1,36 +1,32 @@
 const express = require('express');
-const FarmPond = require('../models/FarmPond');
 const Farm = require('../models/Farm');
-const Pond = require('../models/Pond');
+require("dotenv").config();
+const router = express.Router();
 const {
     Op
 } = require("sequelize");
-require("dotenv").config();
-const router = express.Router();
-const _ = require('lodash');
 
 router.get('/', async (req, res) => {
     try {
-        const data = await FarmPond.findAll({
-            include: [{
-                    model: Farm,
-                    as: 'farm',
-                    attributes: ['name', 'id']
-                },
-                {
-                    model: Pond,
-                    as: 'pond',
-                    attributes: ['name', 'id']
-                }
-            ],
+        let farm = await Farm.findAll({
+            where: {
+                is_deleted: false
+            },
             order: [
                 ['id', 'DESC']
             ],
         });
-        res.status(200).send({
-            message: 'success',
-            data
-        })
+
+        if (farm.length === 0)
+            return res.status(404).send({
+                message: 'Not Found'
+            });
+
+        return res.status(200).send({
+            message: 'Success',
+            data: farm
+        });
+
     } catch (error) {
         console.log(error);
         return res.status(400).send({
@@ -39,47 +35,181 @@ router.get('/', async (req, res) => {
     }
 });
 
-// router.post('/', async (req, res) => {
-//     try {
-//         let roleId = req.body.role_id;
-//         let menus = req.body.menu_id;
-//         const cekExist = await RoleMenu.findOne({
-//             attributes: ['role_id', 'menu_id'],
-//             where: {
-//                 [Op.and]: [{
-//                     role_id: roleId
-//                 }, {
-//                     menu_id: menus
-//                 }]
-//             }
-//         });
-        
-//         if (cekExist != null) {
-//             return res.status(400).send({
-//                 message: "mapping role-menu already exist"
-//             })
-//         }
+router.get('/:id', async (req, res) => {
+    try {
 
-//         let insert_data = RoleMenu.create({
-//             role_id: roleId,
-//             menu_id: menus,
-//         });
+        let farm = await Farm.findByPk(req.params.id);
+        if (!farm)
+            return res.status(404).send({
+                message: 'Not Found'
+            });
 
-//         if (!insert_data) {
-//             return res.status(400).send({
-//                 message: "Error in insert new record"
-//             })
-//         }
+        return res.status(200).send({
+            message: 'Success',
+            data: farm
+        });
+    } catch (error) {
+        console.log(error);
+        return res.status(400).send({
+            message: "Error"
+        })
+    }
+});
 
-//         return res.send({
-//             message: 'Created'
-//         });
-//     } catch (error) {
-//         console.log(error);
-//         return res.status(400).send({
-//             message: "Error"
-//         })
-//     }
-// });
+router.post('/', async (req, res) => {
+    try {
+
+        let farm = await Farm.findOne({
+            where: {
+                [Op.and]: [{
+                    name: req.body.name
+                }, {
+                    is_deleted: false
+                }],
+                
+            }
+        });
+
+        if (farm) {
+            return res.status(400).send({
+                message: `${req.body.name} already exist`
+            });
+        }
+
+        return Farm.create({
+            name: req.body.name
+        }).then(function (data) {
+            if (data) {
+                res.send({
+                    message: 'Farm Created'
+                });
+            } else {
+                res.status(400).send({
+                    message: 'Error in insert new record'
+                });
+            }
+        });
+    } catch (error) {
+        console.log(error);
+        return res.status(400).send({
+            message: "Error"
+        })
+    }
+});
+
+router.put('/:id', async (req, res) => {
+    try {
+        let farm = await Farm.findOne({
+            where: {
+                [Op.and]: [{
+                    name: req.body.name
+                }, {
+                    is_deleted: false
+                }],
+                [Op.not]: [{
+                    id: req.params.id
+                }]
+            }
+        });
+
+        //if farm name exist return error
+        if (farm) {
+            return res.status(400).send({
+                message: `${req.body.name} already exist`
+            });
+        }
+
+        farm = await Farm.findOne({
+            where: {                               
+                [Op.and]: [{
+                    id: req.params.id
+                }, {
+                    is_deleted: false
+                }],
+            }
+        });
+
+        if (!farm) {
+            return Farm.create({
+                name: req.body.name
+            }).then(function (data) {
+                if (data) {
+                    res.send({
+                        message: `${req.body.name} not exist. But system already created new the farm.`
+                    });
+                } else {
+                    res.status(400).send({
+                        message: 'Error in insert new record'
+                    });
+                }
+            });
+        }        
+
+        return Farm.update({
+            name: req.body.name
+        }, {
+            where: {                               
+                [Op.and]: [{
+                    id: req.params.id
+                }, {
+                    is_deleted: false
+                }],
+            }
+        }).then(function (data) {
+            if (data) {
+                res.send({
+                    message: 'Farm Updated'
+                });
+            } else {
+                res.status(400).send({
+                    message: 'Error in update new record'
+                });
+            }
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(400).send({
+            message: "Error"
+        })
+    }
+
+});
+
+router.delete('/:id', async (req, res) => {
+    try {
+
+        let farm = await Farm.findOne({
+            where: {          
+                [Op.and]: [{
+                    id: req.params.id
+                }, {
+                    is_deleted: false
+                }],
+            }
+        });
+        if (farm == null) {
+            return res.status(404).send({
+                message: 'Farm not exist'
+            });
+        }
+        await Farm.update({
+            is_deleted: true,
+            deleted_at: new Date()
+        }, {
+            where: {
+                id: req.params.id
+            }
+        })
+        return res.send({
+            message: `Success delete id ${req.params.id}`
+        });
+
+    } catch (error) {
+        console.log(error);
+        res.status(400).send({
+            message: "Error"
+        })
+    }
+});
 
 module.exports = router;

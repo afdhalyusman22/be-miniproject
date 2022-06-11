@@ -17,6 +17,9 @@ const Farm = db.define("farm", {
     is_deleted: {
         type: Sequelize.BOOLEAN,
     },
+    deleted_at: {
+        type: Sequelize.DATE,
+    },
 }, {
     freezeTableName: true,
     timestamps: false

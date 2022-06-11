@@ -37,6 +37,7 @@ const auth = require('./api/auth');
 const user = require('./api/user');
 const auditTrail = require('./api/auditTrail');
 const farm = require('./api/farm');
+const pond = require('./api/pond');
 
 let corsOptions = {
   origin: "*"
@@ -55,6 +56,7 @@ app.use('/api/v1/auth', auth);
 app.use('/api/v1/user', middleware.isAuthenticated, user);
 app.use('/api/v1/audit-trail', middleware.isAuthenticated, auditTrail);
 app.use('/api/v1/farm', middleware.isAuthenticated, farm);
+app.use('/api/v1/pond', middleware.isAuthenticated, pond);
 
 app.use(function (req, res, next) {
   var err = new Error('Not Found');

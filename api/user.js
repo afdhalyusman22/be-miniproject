@@ -115,7 +115,7 @@ router.put('/:id', async (req, res) => {
         });
 
         if (user == null) {
-            return res.status(400).send({
+            return res.status(404).send({
                 message: 'Data Not Found'
             });
         }
