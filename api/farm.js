@@ -80,7 +80,7 @@ router.post('/', async (req, res) => {
             name: req.body.name
         }).then(function (data) {
             if (data) {
-                res.send({
+                res.status(200).send({
                     message: 'Farm Created'
                 });
             } else {
@@ -128,7 +128,8 @@ router.put('/:id', async (req, res) => {
                 }],
             }
         });
-
+        
+        //if farm not exist create new farm
         if (!farm) {
             return Farm.create({
                 name: req.body.name

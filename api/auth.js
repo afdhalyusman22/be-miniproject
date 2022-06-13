@@ -7,20 +7,6 @@ const jwt = require('jsonwebtoken');
 const dboUser = require('../models/Users');
 const router = express.Router();
 
-router.get('/ping', async (req, res) => {
-    try {
-        return res.status(200).send({
-            message: 'Success'
-        });
-
-    } catch (error) {
-        console.log(error);
-        return res.status(400).send({
-            message: "Error"
-        })
-    }
-});
-
 router.post('/login', async (req, res) => {
     const password = req.body.password;
 
@@ -58,6 +44,7 @@ router.post('/login', async (req, res) => {
                     username: cekUser.username,
                     email: cekUser.email,
                 };
+                //generates jwt
                 jwt.sign(payload, process.env.TOKEN_SECRET, {
                     expiresIn: '1d'
                 }, (err, token) => {

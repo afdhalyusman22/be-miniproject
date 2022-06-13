@@ -13,6 +13,8 @@ function authentication(req, res, next) {
           console.log("Token expired");
         }
         req.user = user;
+
+        //insert audit-trail
         await AuditTrail.create({
           username: req.user.username,
           endpoint: `${req.method} ${req.originalUrl}`,

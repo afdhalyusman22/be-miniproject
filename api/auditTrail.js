@@ -20,12 +20,12 @@ router.get('/', async (req, res) => {
     audit_trail = audit_trail.map(item => {
         return item.dataValues;
     });
-
+    //grouping auidt trail by endpoint
     let auditTrailGrouped = _(audit_trail)
         .groupBy(x => x.endpoint)
         .map((value, key) => ({
             endpoint: key,
-            data: _(value)
+            data: _(value) //grouping auidt trail by username
                 .groupBy(x => x.username)
                 .map((value, key) => ({
                     username: key,
