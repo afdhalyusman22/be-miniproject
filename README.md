@@ -6,3 +6,5 @@ step running application :
 2. open terminal - type npm install
 3. open file .env.example ctrl+A crtl+C - add file .env & ctrl+V - change user,password, database appropriate your local database
 4. in terminal type : node server.js or nodemon server.js
+
+collection postman & database can acces in /support-files
