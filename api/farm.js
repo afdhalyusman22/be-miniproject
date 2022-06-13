@@ -1,4 +1,6 @@
 const express = require('express');
+const Pond = require('../models/Pond');
+const FarmPond = require('../models/FarmPond');
 const Farm = require('../models/Farm');
 require("dotenv").config();
 const router = express.Router();
@@ -38,15 +40,41 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
 
-        let farm = await Farm.findByPk(req.params.id);
+        let farm = await Farm.findOne({
+            where: {
+                [Op.and]: [{
+                    id: req.params.id
+                }, {
+                    is_deleted: false
+                }],
+            }
+        });
         if (!farm)
             return res.status(404).send({
                 message: 'Not Found'
             });
+        //cek relation farm & pond
+        let farm_pond = await FarmPond.findAll({
+            where: {
+                farm_id: req.params.id
+            },
+            include: [{
+                model: Pond,
+                as: 'pond',
+                attributes: ['name', 'id']
+            }],
+        });
+
+        let result = {
+            ...farm.dataValues,
+            pond: farm_pond.map(item => {
+                return item.dataValues.pond;
+            })
+        }
 
         return res.status(200).send({
             message: 'Success',
-            data: farm
+            data: result
         });
     } catch (error) {
         console.log(error);
@@ -66,7 +94,7 @@ router.post('/', async (req, res) => {
                 }, {
                     is_deleted: false
                 }],
-                
+
             }
         });
 
@@ -120,7 +148,7 @@ router.put('/:id', async (req, res) => {
         }
 
         farm = await Farm.findOne({
-            where: {                               
+            where: {
                 [Op.and]: [{
                     id: req.params.id
                 }, {
@@ -128,7 +156,7 @@ router.put('/:id', async (req, res) => {
                 }],
             }
         });
-        
+
         //if farm not exist create new farm
         if (!farm) {
             return Farm.create({
@@ -144,12 +172,12 @@ router.put('/:id', async (req, res) => {
                     });
                 }
             });
-        }        
+        }
 
         return Farm.update({
             name: req.body.name
         }, {
-            where: {                               
+            where: {
                 [Op.and]: [{
                     id: req.params.id
                 }, {
@@ -180,7 +208,7 @@ router.delete('/:id', async (req, res) => {
     try {
 
         let farm = await Farm.findOne({
-            where: {          
+            where: {
                 [Op.and]: [{
                     id: req.params.id
                 }, {

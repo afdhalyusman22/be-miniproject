@@ -18,13 +18,7 @@ const FarmPond = db.define("farm_pond", {
     },
     created_at: {
         type: Sequelize.STRING,
-    },
-    is_deleted: {
-        type: Sequelize.BOOLEAN,
-    },
-    deleted_at: {
-        type: Sequelize.DATE,
-    },
+    }
 }, {
     freezeTableName: true,
     timestamps: false,

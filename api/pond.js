@@ -1,10 +1,15 @@
 const express = require('express');
 const Pond = require('../models/Pond');
+const FarmPond = require('../models/FarmPond');
+const Farm = require('../models/Farm');
 require("dotenv").config();
 const router = express.Router();
 const {
     Op
 } = require("sequelize");
+const {
+    result
+} = require('lodash');
 
 router.get('/', async (req, res) => {
     try {
@@ -37,16 +42,41 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
     try {
-
-        let pond = await Pond.findByPk(req.params.id);
+        let pond = await Pond.findOne({
+            where: {
+                [Op.and]: [{
+                    id: req.params.id
+                }, {
+                    is_deleted: false
+                }],
+            }
+        });
         if (!pond)
             return res.status(404).send({
                 message: 'Not Found'
             });
+        //cek relation farm & pond
+        let farm_pond = await FarmPond.findAll({
+            where: {
+                pond_id: req.params.id
+            },
+            include: [{
+                model: Farm,
+                as: 'farm',
+                attributes: ['name', 'id']
+            }],
+        });
+
+        let result = {
+            ...pond.dataValues,
+            farm: farm_pond.map(item => {
+                return item.dataValues.farm;
+            })
+        }
 
         return res.status(200).send({
             message: 'Success',
-            data: pond
+            data: result
         });
     } catch (error) {
         console.log(error);
@@ -59,6 +89,8 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
 
+        let farm_id = req.body.farm_id;
+
         let pond = await Pond.findOne({
             where: {
                 [Op.and]: [{
@@ -66,7 +98,7 @@ router.post('/', async (req, res) => {
                 }, {
                     is_deleted: false
                 }],
-                
+
             }
         });
 
@@ -76,18 +108,49 @@ router.post('/', async (req, res) => {
             });
         }
 
-        return Pond.create({
+        let ponds = await Pond.create({
             name: req.body.name
-        }).then(function (data) {
-            if (data) {
-                res.send({
-                    message: 'pond Created'
+        });
+
+        if (ponds && farm_id) {
+            let farm = await Farm.findOne({
+                where: {
+                    [Op.and]: [{
+                        id: farm_id
+                    }, {
+                        is_deleted: false
+                    }],
+                }
+            });
+
+            if (!farm)
+                return res.status(200).send({
+                    message: 'Pond Created, but failed register to Farm because farm not exist'
                 });
-            } else {
-                res.status(400).send({
-                    message: 'Error in insert new record'
+
+            return FarmPond.create({
+                farm_id: farm_id,
+                pond_id: ponds.id
+            }).then(function (data) {
+                if (data) {
+                    res.send({
+                        message: 'Pond Created & success register to farm'
+                    });
+                } else {
+                    res.status(200).send({
+                        message: 'Pond Created, but failed register to Farm'
+                    });
+                }
+            }).catch(function () {
+                res.status(200).send({
+                    message: 'Pond Created, but failed register to Farm'
                 });
-            }
+
+            });
+        }
+
+        return res.status(200).send({
+            message: 'Pond Created'
         });
     } catch (error) {
         console.log(error);
@@ -99,6 +162,9 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
     try {
+        let ponds, farm;
+        let farm_id = req.body.farm_id;
+
         let pond = await Pond.findOne({
             where: {
                 [Op.and]: [{
@@ -119,8 +185,21 @@ router.put('/:id', async (req, res) => {
             });
         }
 
+        //get farm master by id
+        if (farm_id) {
+            farm = await Farm.findOne({
+                where: {
+                    [Op.and]: [{
+                        id: farm_id
+                    }, {
+                        is_deleted: false
+                    }],
+                }
+            });
+        }
+
         pond = await Pond.findOne({
-            where: {                
+            where: {
                 [Op.and]: [{
                     id: req.params.id
                 }, {
@@ -129,42 +208,115 @@ router.put('/:id', async (req, res) => {
             }
         });
 
-        if (!pond) {
-            return Pond.create({
-                name: req.body.name
-            }).then(function (data) {
-                if (data) {
-                    res.send({
-                        message: `${req.body.name} not exist. But system already created new the pond.`
-                    });
-                } else {
-                    res.status(400).send({
-                        message: 'Error in insert new record'
-                    });
-                }
-            });
-        }        
 
-        return Pond.update({
+        //if pond not exist create new pond
+        if (!pond) {
+            ponds = await Pond.create({
+                name: req.body.name
+            });
+            //if farm_id exist in request body
+            if (ponds && farm_id) {
+                if (!farm)
+                    return res.status(200).send({
+                        message: `${req.body.name} not exist. But system already created new the pond & failed register to Farm because farm not exist `
+                    });
+
+                return FarmPond.create({
+                    farm_id: farm_id,
+                    pond_id: ponds.id
+                }).then(function (data) {
+                    if (data) {
+                        res.send({
+                            message: 'Pond Updated & success register to farm'
+                        });
+                    } else {
+                        res.status(200).send({
+                            message: 'Pond Updated, but failed register to Farm'
+                        });
+                    }
+                }).catch(function () {
+                    res.status(200).send({
+                        message: 'Pond Updated, but failed register to Farm'
+                    });
+
+                });
+            }
+
+            //return if farm_id not exist in request body
+            return res.status(200).send({
+                message: `${req.body.name} not exist. But system already created new the pond`
+            });
+        }
+
+        ponds = await Pond.update({
             name: req.body.name
         }, {
-            where: {                               
+            where: {
                 [Op.and]: [{
                     id: req.params.id
                 }, {
                     is_deleted: false
                 }],
             }
-        }).then(function (data) {
-            if (data) {
-                res.send({
-                    message: 'Pond Updated'
+        })
+
+        if (ponds && farm_id) {
+            if (!farm)
+                return res.status(200).send({
+                    message: `${req.body.name} not exist. but failed register to Farm because farm not exist `
                 });
-            } else {
-                res.status(400).send({
-                    message: 'Error in update new record'
-                });
+
+            //cek pond_id already register to farm
+            let farm_pond = await FarmPond.findOne({
+                where: {
+                    pond_id: req.params.id
+                }
+            });
+
+            //if pond_id exist, update relation farm pond
+            if (farm_pond) {
+                let update_farm_pond = await FarmPond.update({
+                    farm_id: farm_id
+                }, {
+                    where: {
+                        pond_id: req.params.id
+                    }
+                })
+
+                if (update_farm_pond)
+                    return res.status(200).send({
+                            message: 'Pond Updated & relation farm & pond success updated'
+                        });
+
+                return res.status(200).send({
+                            message: 'Pond Updated & relation farm & pond failed updated'
+                        });
+
             }
+
+            return FarmPond.create({
+                farm_id: farm_id,
+                pond_id: req.params.id
+            }).then(function (data) {
+                if (data) {
+                    res.send({
+                        message: 'Pond Updated & success register to farm'
+                    });
+                } else {
+                    res.status(200).send({
+                        message: 'Pond Updated, but failed register to Farm'
+                    });
+                }
+            }).catch(function () {
+                res.status(200).send({
+                    message: 'Pond Updated, but failed register to Farm'
+                });
+
+            });
+        }
+
+        return res.status(200).send({
+            message: 'Pond Updated'
         });
     } catch (error) {
         console.log(error);
@@ -179,7 +331,7 @@ router.delete('/:id', async (req, res) => {
     try {
 
         let pond = await Pond.findOne({
-            where: {         
+            where: {
                 [Op.and]: [{
                     id: req.params.id
                 }, {

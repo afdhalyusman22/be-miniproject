@@ -15,10 +15,11 @@ function authentication(req, res, next) {
         req.user = user;
 
         //insert audit-trail
-        await AuditTrail.create({
-          username: req.user.username,
-          endpoint: `${req.method} ${req.originalUrl}`,
-        });
+        if (user)
+          await AuditTrail.create({
+            username: req.user.username,
+            endpoint: `${req.method} ${req.originalUrl}`,
+          });
       });
     } else {
       next();
